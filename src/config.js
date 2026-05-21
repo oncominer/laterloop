@@ -1,2 +1,2 @@
-window.SUPABASE_URL = "";
-window.SUPABASE_ANON_KEY = "";
+window.SUPABASE_URL = "https://skbpcegsopcpjiyydxri.supabase.co";
+window.SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNrYnBjZWdzb3BjcGppeXlkeHJpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkzMTkyNTQsImV4cCI6MjA5NDg5NTI1NH0.HmLUOJMxB-2FF3Ojr2my_zi-MLFPi-rLTQvTldXAENo";
