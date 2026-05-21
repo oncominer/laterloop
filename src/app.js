@@ -10,6 +10,8 @@ const state = {
   capsules: [],
   pixels: [],
   wallOffset: { x: 0, y: 0 },
+  wallZoom: 1,
+  wallTouched: false,
   dragging: false,
   dragStart: null
 };
@@ -31,6 +33,9 @@ const els = {
   pixelWall: $("#pixelWall"),
   randomPixel: $("#randomPixel"),
   centerWall: $("#centerWall"),
+  zoomOutWall: $("#zoomOutWall"),
+  zoomInWall: $("#zoomInWall"),
+  wallZoom: $("#wallZoom"),
   wallPosition: $("#wallPosition"),
   capsuleList: $("#capsuleList"),
   revealForm: $("#revealForm"),
@@ -61,15 +66,25 @@ function sectorText() {
   const x = Math.round(state.wallOffset.x / 180);
   const y = Math.round(state.wallOffset.y / 180);
   els.wallPosition.textContent = `Sector ${x}, ${y}`;
+  els.wallZoom.textContent = `${Math.round(state.wallZoom * 100)}%`;
 }
 
-function seededPosition(id) {
-  let hash = 0;
-  for (const char of id) hash = (hash * 31 + char.charCodeAt(0)) | 0;
-  return {
-    x: (hash % 1900) - 950,
-    y: ((hash >> 8) % 1200) - 600
-  };
+function nextPixelPosition(existingPixels) {
+  const reserved = new Set(existingPixels.map((pixel) => `${pixel.x},${pixel.y}`));
+  if (!reserved.has("0,0")) return { x: 0, y: 0 };
+
+  const step = 22;
+  for (let radius = 1; radius < 500; radius += 1) {
+    for (let y = -radius; y <= radius; y += 1) {
+      for (let x = -radius; x <= radius; x += 1) {
+        if (Math.max(Math.abs(x), Math.abs(y)) !== radius) continue;
+        const position = { x: x * step, y: y * step };
+        if (!reserved.has(`${position.x},${position.y}`)) return position;
+      }
+    }
+  }
+
+  return { x: 0, y: 0 };
 }
 
 function renderHeroGrid() {
@@ -98,12 +113,31 @@ function renderWall() {
     dot.title = `${pixel.name} reserved this pixel`;
     dot.style.color = pixel.color;
     dot.style.background = pixel.color;
-    dot.style.left = `calc(50% + ${pixel.x + state.wallOffset.x}px)`;
-    dot.style.top = `calc(50% + ${pixel.y + state.wallOffset.y}px)`;
+    const x = pixel.x * state.wallZoom + state.wallOffset.x;
+    const y = pixel.y * state.wallZoom + state.wallOffset.y;
+    dot.style.left = `calc(50% + ${x}px)`;
+    dot.style.top = `calc(50% + ${y}px)`;
+    dot.style.transform = `translate(-50%, -50%) scale(${state.wallZoom})`;
     els.pixelWall.append(dot);
   });
 
   sectorText();
+}
+
+function centerOnPixel(pixel) {
+  if (!pixel) return;
+  state.wallOffset = { x: -pixel.x * state.wallZoom, y: -pixel.y * state.wallZoom };
+}
+
+function setWallZoom(nextZoom) {
+  const previousZoom = state.wallZoom;
+  if (nextZoom === previousZoom) return;
+  const scale = nextZoom / previousZoom;
+  state.wallOffset = {
+    x: Number((state.wallOffset.x * scale).toFixed(2)),
+    y: Number((state.wallOffset.y * scale).toFixed(2))
+  };
+  state.wallZoom = nextZoom;
 }
 
 function renderCapsules() {
@@ -153,6 +187,9 @@ async function refreshData() {
     } else {
       state.capsules = capsules || [];
       state.pixels = pixels || [];
+      if (state.pixels.length && !state.wallTouched) {
+        centerOnPixel(state.pixels[0]);
+      }
     }
   } else {
     state.capsules = [];
@@ -176,7 +213,14 @@ async function lockCapsule(event) {
   }
 
   const id = uid();
-  const pos = seededPosition(id);
+  const { data: existingPixels, error: existingPixelError } = await client
+    .from("reserved_pixels")
+    .select("x,y");
+  if (existingPixelError) {
+    showToast(existingPixelError.message || "Could not inspect the pixel wall.");
+    return;
+  }
+  const pos = nextPixelPosition(existingPixels || []);
   const capsule = {
     id,
     owner_id: null,
@@ -217,6 +261,8 @@ async function lockCapsule(event) {
   els.revealCapsuleId.value = id;
   els.capsuleForm.reset();
   setDefaultDate();
+  centerOnPixel(pixel);
+  state.wallTouched = false;
   await refreshData();
   showToast("Capsule locked. Pixel reserved on the wall.");
   location.hash = "#wall";
@@ -263,6 +309,7 @@ function showReveal(capsule) {
 function bindWallControls() {
   els.pixelWall.addEventListener("pointerdown", (event) => {
     state.dragging = true;
+    state.wallTouched = true;
     state.dragStart = {
       x: event.clientX,
       y: event.clientY,
@@ -284,13 +331,27 @@ function bindWallControls() {
   });
 
   els.randomPixel.addEventListener("click", () => {
+    state.wallTouched = true;
     state.wallOffset.x = Math.round((Math.random() - 0.5) * 1400);
     state.wallOffset.y = Math.round((Math.random() - 0.5) * 900);
     renderWall();
   });
 
   els.centerWall.addEventListener("click", () => {
+    state.wallTouched = true;
     state.wallOffset = { x: 0, y: 0 };
+    renderWall();
+  });
+
+  els.zoomOutWall.addEventListener("click", () => {
+    state.wallTouched = true;
+    setWallZoom(Math.max(0.35, Number((state.wallZoom - 0.15).toFixed(2))));
+    renderWall();
+  });
+
+  els.zoomInWall.addEventListener("click", () => {
+    state.wallTouched = true;
+    setWallZoom(Math.min(2, Number((state.wallZoom + 0.15).toFixed(2))));
     renderWall();
   });
 }
