@@ -50,7 +50,15 @@
         <div class="arcade-screen" aria-label="Pixel time capsule preview">
           <div class="screen-grid" id="heroGrid"></div>
           <div class="scanline"></div>
-          <div class="screen-label">CAPSULE LINK: STABLE</div>
+          <div class="screen-label">
+            <span class="status-pixels" aria-hidden="true">
+              <span></span>
+              <span></span>
+              <span></span>
+              <span></span>
+            </span>
+            <span>CAPSULE LINK: STABLE</span>
+          </div>
         </div>
       </section>
 
@@ -90,12 +98,6 @@
               <label>
                 Open on
                 <input id="unlockAt" required type="datetime-local" />
-              </label>
-              <label>
-                Secret delivery
-                <select id="deliveryMethod">
-                  <option value="email">Email</option>
-                </select>
               </label>
               <label class="wide">
                 Email for the future password

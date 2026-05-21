@@ -23,7 +23,6 @@ const els = {
   displayName: $("#displayName"),
   recipientName: $("#recipientName"),
   unlockAt: $("#unlockAt"),
-  deliveryMethod: $("#deliveryMethod"),
   deliveryTarget: $("#deliveryTarget"),
   capsuleTitle: $("#capsuleTitle"),
   capsuleBody: $("#capsuleBody"),
