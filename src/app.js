@@ -251,7 +251,7 @@ async function lockCapsule(event) {
     title: els.capsuleTitle.value.trim(),
     body: els.capsuleBody.value.trim(),
     unlock_at: unlockAt.toISOString(),
-    delivery_method: els.deliveryMethod.value,
+    delivery_method: "email",
     delivery_target: els.deliveryTarget.value.trim(),
     created_at: new Date().toISOString()
   };

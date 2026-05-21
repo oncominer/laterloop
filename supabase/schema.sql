@@ -7,7 +7,7 @@ create table if not exists public.capsules (
   recipient_name text not null check (char_length(recipient_name) between 1 and 48),
   title text not null check (char_length(title) between 1 and 72),
   unlock_at timestamptz not null check (unlock_at > created_at),
-  delivery_method text not null check (delivery_method in ('email', 'sms')),
+  delivery_method text not null default 'email' check (delivery_method = 'email'),
   delivery_target text not null,
   unlock_password_sent_at timestamptz,
   unlock_delivery_error text,

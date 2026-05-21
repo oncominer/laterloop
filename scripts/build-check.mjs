@@ -5,7 +5,6 @@ const required = [
   "src/app.js",
   "src/styles.css",
   "src/config.js",
-  "netlify/functions/send-unlock-code.js",
   "netlify/functions/reveal-capsule.js",
   "netlify/functions/auto-send-unlock-codes.js",
   "supabase/schema.sql"

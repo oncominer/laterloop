@@ -51,31 +51,6 @@ async function sendEmail(to, password, capsule) {
   if (!response.ok) throw new Error(`Email delivery failed with status ${response.status}`);
 }
 
-async function sendSms(to, password, capsule) {
-  if (!process.env.TWILIO_ACCOUNT_SID || !process.env.TWILIO_AUTH_TOKEN || !process.env.TWILIO_FROM_NUMBER) {
-    throw new Error("Twilio environment variables are not configured");
-  }
-
-  const body = new URLSearchParams({
-    To: to,
-    From: process.env.TWILIO_FROM_NUMBER,
-    Body: `Your LaterLoop capsule "${capsule.title}" is ready. ID: ${capsule.id}. Password: ${password}`
-  });
-  const token = Buffer.from(`${process.env.TWILIO_ACCOUNT_SID}:${process.env.TWILIO_AUTH_TOKEN}`).toString("base64");
-  const response = await fetch(
-    `https://api.twilio.com/2010-04-01/Accounts/${process.env.TWILIO_ACCOUNT_SID}/Messages.json`,
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Basic ${token}`,
-        "Content-Type": "application/x-www-form-urlencoded"
-      },
-      body
-    }
-  );
-  if (!response.ok) throw new Error(`SMS delivery failed with status ${response.status}`);
-}
-
 async function markCapsule(capsuleId, updates) {
   return supabaseFetch(`capsules?id=eq.${encodeURIComponent(capsuleId)}`, {
     method: "PATCH",
@@ -93,7 +68,7 @@ export async function handler() {
 
   const now = new Date().toISOString();
   const capsules = await supabaseFetch(
-    `capsules?unlock_at=lte.${encodeURIComponent(now)}&unlock_password_sent_at=is.null&select=id,title,delivery_method,delivery_target&limit=25`
+    `capsules?unlock_at=lte.${encodeURIComponent(now)}&unlock_password_sent_at=is.null&select=id,title,delivery_target&limit=25`
   );
 
   const results = [];
@@ -111,11 +86,7 @@ export async function handler() {
         })
       });
 
-      if (capsule.delivery_method === "sms") {
-        await sendSms(capsule.delivery_target, password, capsule);
-      } else {
-        await sendEmail(capsule.delivery_target, password, capsule);
-      }
+      await sendEmail(capsule.delivery_target, password, capsule);
 
       await markCapsule(capsule.id, {
         unlock_password_sent_at: new Date().toISOString(),

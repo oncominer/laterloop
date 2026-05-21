@@ -38,13 +38,12 @@ SUPABASE_SERVICE_ROLE_KEY
 ```
 
 For automatic email unlock delivery, add `RESEND_API_KEY` and `FROM_EMAIL`.
-For SMS unlock delivery, add `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, and `TWILIO_FROM_NUMBER`.
 
 ## Flow
 
-- A user writes a single capsule letter, chooses an unlock date/time, and picks email or SMS delivery.
+- A user writes a single capsule letter, chooses an unlock date/time, and enters an email for delivery.
 - Locking the capsule saves the sealed letter and reserves a colored pixel on the wall.
 - Hovering a reserved pixel shows the creator's display name.
 - A Netlify scheduled function checks every 15 minutes for capsules that are ready.
-- After the unlock time, the scheduled function stores a hashed password and sends the secret password to the registered email or phone.
+- After the unlock time, the scheduled function stores a hashed password and sends the secret password to the registered email.
 - The reveal function verifies the password before returning the capsule letter.

@@ -68,7 +68,7 @@
           </div>
           <p class="hint">
             Capsules are sealed without an account. When the unlock time arrives,
-            the secret password is sent to the registered email or phone.
+            the secret password is sent to the registered email.
           </p>
         </aside>
 
@@ -95,12 +95,11 @@
                 Secret delivery
                 <select id="deliveryMethod">
                   <option value="email">Email</option>
-                  <option value="sms">Phone SMS</option>
                 </select>
               </label>
               <label class="wide">
-                Email or phone for the future password
-                <input id="deliveryTarget" required placeholder="you@example.com or +15555550123" />
+                Email for the future password
+                <input id="deliveryTarget" required type="email" placeholder="you@example.com" autocomplete="email" />
               </label>
               <label class="wide">
                 Capsule title
