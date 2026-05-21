@@ -164,6 +164,21 @@
       </section>
     </main>
 
+    <dialog class="seal-dialog" id="sealDialog">
+      <form method="dialog" class="seal-modal">
+        <p class="eyebrow">Final seal warning</p>
+        <h2>Once sealed, this capsule stays locked.</h2>
+        <p id="sealWarningText">
+          The letter cannot be opened until the release date you selected. The
+          secret password will only be sent after that time arrives.
+        </p>
+        <div class="form-actions">
+          <button class="ghost-button" id="cancelSeal" value="cancel" type="button">Cancel</button>
+          <button class="pixel-button" id="confirmSeal" value="confirm" type="button">Seal Capsule</button>
+        </div>
+      </form>
+    </dialog>
+
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
   </body>
 </html>

@@ -42,6 +42,10 @@ const els = {
   revealCapsuleId: $("#revealCapsuleId"),
   secretPassword: $("#secretPassword"),
   revealBox: $("#revealBox"),
+  sealDialog: $("#sealDialog"),
+  sealWarningText: $("#sealWarningText"),
+  cancelSeal: $("#cancelSeal"),
+  confirmSeal: $("#confirmSeal"),
   toast: $("#toast"),
   heroGrid: $("#heroGrid")
 };
@@ -106,19 +110,20 @@ function renderWall() {
   els.pixelWall.style.backgroundPosition = `${state.wallOffset.x}px ${state.wallOffset.y}px`;
 
   state.pixels.forEach((pixel) => {
-    const dot = document.createElement("button");
-    dot.className = "reserved-pixel";
-    dot.type = "button";
-    dot.dataset.name = pixel.name;
-    dot.title = `${pixel.name} reserved this pixel`;
-    dot.style.color = pixel.color;
-    dot.style.background = pixel.color;
+    const marker = document.createElement("button");
+    marker.className = "reserved-marker";
+    marker.type = "button";
+    marker.dataset.name = pixel.name;
+    marker.dataset.capsuleId = pixel.capsule_id;
+    marker.title = `${pixel.name} reserved this pixel`;
+    marker.style.color = pixel.color;
     const x = pixel.x * state.wallZoom + state.wallOffset.x;
     const y = pixel.y * state.wallZoom + state.wallOffset.y;
-    dot.style.left = `calc(50% + ${x}px)`;
-    dot.style.top = `calc(50% + ${y}px)`;
-    dot.style.transform = `translate(-50%, -50%) scale(${state.wallZoom})`;
-    els.pixelWall.append(dot);
+    marker.style.left = `calc(50% + ${x}px)`;
+    marker.style.top = `calc(50% + ${y}px)`;
+    marker.style.transform = `translate(-50%, -50%) scale(${state.wallZoom})`;
+    marker.innerHTML = `<span class="reserved-pixel"></span><span class="pixel-name">${escapeHtml(pixel.name)}</span>`;
+    els.pixelWall.append(marker);
   });
 
   sectorText();
@@ -127,6 +132,18 @@ function renderWall() {
 function centerOnPixel(pixel) {
   if (!pixel) return;
   state.wallOffset = { x: -pixel.x * state.wallZoom, y: -pixel.y * state.wallZoom };
+}
+
+function focusCapsulePixel(capsuleId) {
+  const pixel = state.pixels.find((item) => item.capsule_id === capsuleId);
+  if (!pixel) {
+    showToast("That capsule does not have a visible pixel yet.");
+    return;
+  }
+  state.wallTouched = true;
+  centerOnPixel(pixel);
+  renderWall();
+  location.hash = "#wall";
 }
 
 function setWallZoom(nextZoom) {
@@ -153,12 +170,15 @@ function renderCapsules() {
   els.capsuleList.innerHTML = state.capsules
     .map((capsule) => {
       const openable = new Date(capsule.unlock_at).getTime() <= now;
+      const pixel = state.pixels.find((item) => item.capsule_id === capsule.id);
       return `
-        <article class="capsule-card">
+        <article class="capsule-card capsule-log" data-capsule-id="${capsule.id}">
           <span class="${openable ? "openable" : "locked"}">${openable ? "READY TO OPEN" : "SEALED"}</span>
           <h3>${escapeHtml(capsule.title)}</h3>
+          <p>Written by ${escapeHtml(capsule.display_name || pixel?.name || "Anonymous")}</p>
           <p>For ${escapeHtml(capsule.recipient_name)} - Opens ${new Date(capsule.unlock_at).toLocaleString()}</p>
           <p>ID: ${capsule.id}</p>
+          <button class="ghost-button locate-pixel" type="button" data-capsule-id="${capsule.id}">View Pixel</button>
         </article>
       `;
     })
@@ -202,6 +222,8 @@ async function refreshData() {
 
 async function lockCapsule(event) {
   event.preventDefault();
+  const confirmed = await confirmSealWarning();
+  if (!confirmed) return;
   if (!client) {
     showToast("Supabase is not configured yet.");
     return;
@@ -268,6 +290,44 @@ async function lockCapsule(event) {
   location.hash = "#wall";
 }
 
+function confirmSealWarning() {
+  const unlockAt = new Date(els.unlockAt.value);
+  const unlockLabel = Number.isNaN(unlockAt.getTime())
+    ? "the selected release date"
+    : unlockAt.toLocaleString();
+
+  els.sealWarningText.textContent =
+    `Once sealed, this capsule cannot be opened until ${unlockLabel}. ` +
+    "The secret password will only be sent after that time arrives.";
+
+  if (!els.sealDialog?.showModal) {
+    return Promise.resolve(window.confirm(els.sealWarningText.textContent));
+  }
+
+  return new Promise((resolve) => {
+    const cleanup = () => {
+      els.confirmSeal.removeEventListener("click", onConfirm);
+      els.cancelSeal.removeEventListener("click", onCancel);
+      els.sealDialog.removeEventListener("cancel", onCancel);
+    };
+    const onConfirm = () => {
+      cleanup();
+      els.sealDialog.close();
+      resolve(true);
+    };
+    const onCancel = () => {
+      cleanup();
+      els.sealDialog.close();
+      resolve(false);
+    };
+
+    els.confirmSeal.addEventListener("click", onConfirm);
+    els.cancelSeal.addEventListener("click", onCancel);
+    els.sealDialog.addEventListener("cancel", onCancel);
+    els.sealDialog.showModal();
+  });
+}
+
 async function revealCapsule(event) {
   event.preventDefault();
   const capsuleId = els.revealCapsuleId.value.trim();
@@ -332,8 +392,12 @@ function bindWallControls() {
 
   els.randomPixel.addEventListener("click", () => {
     state.wallTouched = true;
-    state.wallOffset.x = Math.round((Math.random() - 0.5) * 1400);
-    state.wallOffset.y = Math.round((Math.random() - 0.5) * 900);
+    if (!state.pixels.length) {
+      showToast("No pixels are reserved yet.");
+      return;
+    }
+    const pixel = state.pixels[Math.floor(Math.random() * state.pixels.length)];
+    centerOnPixel(pixel);
     renderWall();
   });
 
@@ -359,6 +423,11 @@ function bindWallControls() {
 function bindEvents() {
   els.capsuleForm.addEventListener("submit", lockCapsule);
   els.revealForm.addEventListener("submit", revealCapsule);
+  els.capsuleList.addEventListener("click", (event) => {
+    const target = event.target.closest(".capsule-log");
+    if (!target) return;
+    focusCapsulePixel(target.dataset.capsuleId);
+  });
   bindWallControls();
 }
 
