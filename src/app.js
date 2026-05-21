@@ -5,10 +5,8 @@ const config = {
 
 const hasSupabase = Boolean(config.supabaseUrl && config.supabaseAnonKey && window.supabase);
 const client = hasSupabase ? window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey) : null;
-const storageKey = "future_xyz_capsules_v1";
 
 const state = {
-  user: null,
   capsules: [],
   pixels: [],
   wallOffset: { x: 0, y: 0 },
@@ -19,13 +17,6 @@ const state = {
 const $ = (selector) => document.querySelector(selector);
 
 const els = {
-  authAction: $("#authAction"),
-  loginPanel: $("#loginPanel"),
-  loginForm: $("#loginForm"),
-  phoneLogin: $("#phoneLogin"),
-  loginEmail: $("#loginEmail"),
-  loginPhone: $("#loginPhone"),
-  sessionState: $("#sessionState"),
   capsuleForm: $("#capsuleForm"),
   displayName: $("#displayName"),
   recipientName: $("#recipientName"),
@@ -42,9 +33,6 @@ const els = {
   centerWall: $("#centerWall"),
   wallPosition: $("#wallPosition"),
   capsuleList: $("#capsuleList"),
-  unlockForm: $("#unlockForm"),
-  unlockCapsuleId: $("#unlockCapsuleId"),
-  unlockTarget: $("#unlockTarget"),
   revealForm: $("#revealForm"),
   revealCapsuleId: $("#revealCapsuleId"),
   secretPassword: $("#secretPassword"),
@@ -57,18 +45,6 @@ function showToast(message) {
   els.toast.textContent = message;
   els.toast.classList.add("show");
   window.setTimeout(() => els.toast.classList.remove("show"), 3600);
-}
-
-function loadLocal() {
-  try {
-    return JSON.parse(localStorage.getItem(storageKey)) || [];
-  } catch {
-    return [];
-  }
-}
-
-function saveLocal(capsules) {
-  localStorage.setItem(storageKey, JSON.stringify(capsules));
 }
 
 function uid() {
@@ -133,10 +109,9 @@ function renderWall() {
 function renderCapsules() {
   els.lockedCount.textContent = state.capsules.length;
   els.pixelCount.textContent = state.pixels.length;
-  els.sessionState.textContent = state.user?.email || state.user?.phone || (hasSupabase ? "Logged out" : "Demo");
 
   if (!state.capsules.length) {
-    els.capsuleList.innerHTML = `<article class="capsule-card"><h3>No capsules yet</h3><p>Your locked letters will appear here.</p></article>`;
+    els.capsuleList.innerHTML = `<article class="capsule-card"><h3>No capsules yet</h3><p>Lock a capsule to reserve a pixel and receive a capsule ID.</p></article>`;
     return;
   }
 
@@ -167,9 +142,9 @@ function escapeHtml(value) {
 }
 
 async function refreshData() {
-  if (client && state.user) {
+  if (client) {
     const [{ data: capsules, error: capsuleError }, { data: pixels, error: pixelError }] = await Promise.all([
-      client.from("capsules").select("*").order("created_at", { ascending: false }),
+      client.from("capsules").select("id,display_name,recipient_name,title,unlock_at,created_at,unlock_password_sent_at").order("created_at", { ascending: false }).limit(10),
       client.from("reserved_pixels").select("*").order("created_at", { ascending: false })
     ]);
 
@@ -180,8 +155,8 @@ async function refreshData() {
       state.pixels = pixels || [];
     }
   } else {
-    state.capsules = loadLocal();
-    state.pixels = state.capsules.map((capsule) => capsule.pixel);
+    state.capsules = [];
+    state.pixels = [];
   }
 
   renderCapsules();
@@ -190,6 +165,10 @@ async function refreshData() {
 
 async function lockCapsule(event) {
   event.preventDefault();
+  if (!client) {
+    showToast("Supabase is not configured yet.");
+    return;
+  }
   const unlockAt = new Date(els.unlockAt.value);
   if (Number.isNaN(unlockAt.getTime()) || unlockAt.getTime() <= Date.now()) {
     showToast("Choose a future unlock time.");
@@ -200,7 +179,7 @@ async function lockCapsule(event) {
   const pos = seededPosition(id);
   const capsule = {
     id,
-    owner_id: state.user?.id || null,
+    owner_id: null,
     display_name: els.displayName.value.trim(),
     recipient_name: els.recipientName.value.trim(),
     title: els.capsuleTitle.value.trim(),
@@ -213,7 +192,7 @@ async function lockCapsule(event) {
   const pixel = {
     id: uid(),
     capsule_id: id,
-    owner_id: state.user?.id || null,
+    owner_id: null,
     name: capsule.display_name,
     color: els.pixelColor.value,
     x: pos.x,
@@ -221,98 +200,26 @@ async function lockCapsule(event) {
     created_at: capsule.created_at
   };
 
-  if (client && state.user) {
-    const { body, ...capsuleRecord } = capsule;
-    const letter = { capsule_id: id, owner_id: state.user.id, body };
-    const { error: capsuleError } = await client.from("capsules").insert(capsuleRecord);
-    const { error: letterError } = capsuleError
-      ? { error: capsuleError }
-      : await client.from("capsule_letters").insert(letter);
-    const { error: pixelError } = capsuleError || letterError
-      ? { error: capsuleError || letterError }
-      : await client.from("reserved_pixels").insert(pixel);
-    if (capsuleError || letterError || pixelError) {
-      showToast(capsuleError?.message || letterError?.message || pixelError?.message || "Could not lock capsule.");
-      return;
-    }
-  } else {
-    const localCapsule = { ...capsule, pixel };
-    const capsules = [localCapsule, ...loadLocal()];
-    saveLocal(capsules);
+  const { body, ...capsuleRecord } = capsule;
+  const letter = { capsule_id: id, owner_id: null, body };
+  const { error: capsuleError } = await client.from("capsules").insert(capsuleRecord);
+  const { error: letterError } = capsuleError
+    ? { error: capsuleError }
+    : await client.from("capsule_letters").insert(letter);
+  const { error: pixelError } = capsuleError || letterError
+    ? { error: capsuleError || letterError }
+    : await client.from("reserved_pixels").insert(pixel);
+  if (capsuleError || letterError || pixelError) {
+    showToast(capsuleError?.message || letterError?.message || pixelError?.message || "Could not lock capsule.");
+    return;
   }
 
-  els.unlockCapsuleId.value = id;
-  els.unlockTarget.value = capsule.delivery_target;
   els.revealCapsuleId.value = id;
   els.capsuleForm.reset();
   setDefaultDate();
   await refreshData();
   showToast("Capsule locked. Pixel reserved on the wall.");
   location.hash = "#wall";
-}
-
-async function loginWithEmail(event) {
-  event.preventDefault();
-  if (!client) {
-    showToast("Add Supabase keys to enable hosted login.");
-    return;
-  }
-  const email = els.loginEmail.value.trim();
-  if (!email) {
-    showToast("Enter an email address.");
-    return;
-  }
-  const { error } = await client.auth.signInWithOtp({
-    email,
-    options: { emailRedirectTo: location.origin }
-  });
-  showToast(error ? error.message : "Magic link sent.");
-}
-
-async function loginWithPhone() {
-  if (!client) {
-    showToast("Add Supabase keys to enable phone OTP.");
-    return;
-  }
-  const phone = els.loginPhone.value.trim();
-  if (!phone) {
-    showToast("Enter a phone number.");
-    return;
-  }
-  const { error } = await client.auth.signInWithOtp({ phone });
-  showToast(error ? error.message : "Phone OTP sent.");
-}
-
-async function requestUnlock(event) {
-  event.preventDefault();
-  const capsuleId = els.unlockCapsuleId.value.trim();
-  const target = els.unlockTarget.value.trim();
-  if (!capsuleId || !target) {
-    showToast("Enter the capsule ID and delivery address.");
-    return;
-  }
-
-  if (!hasSupabase) {
-    const capsule = loadLocal().find((item) => item.id === capsuleId);
-    if (!capsule) {
-      showToast("Capsule not found in local demo mode.");
-      return;
-    }
-    if (new Date(capsule.unlock_at).getTime() > Date.now()) {
-      showToast("This capsule is still sealed.");
-      return;
-    }
-    showToast(`Demo unlock password: ${capsule.id.slice(0, 8).toUpperCase()}`);
-    return;
-  }
-
-  const response = await fetch("/.netlify/functions/send-unlock-code", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ capsuleId, target })
-  });
-  const payload = await response.json().catch(() => ({}));
-  showToast(payload.message || (response.ok ? "Unlock password sent." : "Could not send unlock password."));
 }
 
 async function revealCapsule(event) {
@@ -325,20 +232,7 @@ async function revealCapsule(event) {
   }
 
   if (!hasSupabase) {
-    const capsule = loadLocal().find((item) => item.id === capsuleId);
-    if (!capsule) {
-      showToast("Capsule not found in local demo mode.");
-      return;
-    }
-    if (new Date(capsule.unlock_at).getTime() > Date.now()) {
-      showToast("This capsule is still sealed.");
-      return;
-    }
-    if (password !== capsule.id.slice(0, 8).toUpperCase()) {
-      showToast("Secret password does not match.");
-      return;
-    }
-    showReveal(capsule);
+    showToast("Supabase is not configured yet.");
     return;
   }
 
@@ -401,31 +295,8 @@ function bindWallControls() {
   });
 }
 
-async function initAuth() {
-  if (!client) return;
-  const { data } = await client.auth.getSession();
-  state.user = data.session?.user || null;
-  client.auth.onAuthStateChange((_event, session) => {
-    state.user = session?.user || null;
-    els.authAction.textContent = state.user ? "Logout" : "Login";
-    refreshData();
-  });
-  els.authAction.textContent = state.user ? "Logout" : "Login";
-}
-
 function bindEvents() {
-  els.authAction.addEventListener("click", async () => {
-    if (state.user && client) {
-      await client.auth.signOut();
-      showToast("Logged out.");
-      return;
-    }
-    els.loginPanel.hidden = !els.loginPanel.hidden;
-  });
-  els.loginForm.addEventListener("submit", loginWithEmail);
-  els.phoneLogin.addEventListener("click", loginWithPhone);
   els.capsuleForm.addEventListener("submit", lockCapsule);
-  els.unlockForm.addEventListener("submit", requestUnlock);
   els.revealForm.addEventListener("submit", revealCapsule);
   bindWallControls();
 }
@@ -434,7 +305,6 @@ async function boot() {
   renderHeroGrid();
   setDefaultDate();
   bindEvents();
-  await initAuth();
   await refreshData();
 }
 

@@ -11,7 +11,7 @@ npm install
 npm run dev
 ```
 
-If you only want to preview the static demo mode:
+If you only want to preview the static frontend:
 
 ```bash
 python -m http.server 4173 --bind 127.0.0.1
@@ -21,7 +21,7 @@ python -m http.server 4173 --bind 127.0.0.1
 
 1. Create a Supabase project.
 2. Run `supabase/schema.sql` in the Supabase SQL editor.
-3. Enable Email auth, and optionally Phone auth, in Supabase Authentication.
+3. Add your Supabase URL and anon key to `src/config.js`.
 4. Copy `src/config.js` values:
 
 ```js
@@ -37,15 +37,14 @@ SUPABASE_ANON_KEY
 SUPABASE_SERVICE_ROLE_KEY
 ```
 
-For email unlock delivery, add `RESEND_API_KEY` and `FROM_EMAIL`.
+For automatic email unlock delivery, add `RESEND_API_KEY` and `FROM_EMAIL`.
 For SMS unlock delivery, add `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, and `TWILIO_FROM_NUMBER`.
 
 ## Flow
 
-- Users login through Supabase magic link or phone OTP.
 - A user writes a single capsule letter, chooses an unlock date/time, and picks email or SMS delivery.
 - Locking the capsule saves the sealed letter and reserves a colored pixel on the wall.
 - Hovering a reserved pixel shows the creator's display name.
-- After the unlock time, the user requests a secret password.
-- The Netlify Function verifies the capsule is ready, stores a hashed password, and sends it through the configured provider.
+- A Netlify scheduled function checks every 15 minutes for capsules that are ready.
+- After the unlock time, the scheduled function stores a hashed password and sends the secret password to the registered email or phone.
 - The reveal function verifies the password before returning the capsule letter.

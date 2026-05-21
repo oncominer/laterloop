@@ -9,8 +9,14 @@ create table if not exists public.capsules (
   unlock_at timestamptz not null check (unlock_at > created_at),
   delivery_method text not null check (delivery_method in ('email', 'sms')),
   delivery_target text not null,
+  unlock_password_sent_at timestamptz,
+  unlock_delivery_error text,
   created_at timestamptz not null default now()
 );
+
+alter table public.capsules
+  add column if not exists unlock_password_sent_at timestamptz,
+  add column if not exists unlock_delivery_error text;
 
 create table if not exists public.capsule_letters (
   capsule_id uuid primary key references public.capsules(id) on delete cascade,
@@ -51,20 +57,35 @@ create policy "Capsule owners can insert"
   to authenticated
   with check (owner_id = auth.uid());
 
-create policy "Capsule owners can read metadata"
+create policy "Anonymous visitors can insert capsules"
+  on public.capsules for insert
+  to anon
+  with check (owner_id is null);
+
+create policy "Everyone can read capsule metadata"
   on public.capsules for select
-  to authenticated
-  using (owner_id = auth.uid());
+  to anon, authenticated
+  using (true);
 
 create policy "Capsule owners can insert letters"
   on public.capsule_letters for insert
   to authenticated
   with check (owner_id = auth.uid());
 
+create policy "Anonymous visitors can insert letters"
+  on public.capsule_letters for insert
+  to anon
+  with check (owner_id is null);
+
 create policy "Pixel owners can insert"
   on public.reserved_pixels for insert
   to authenticated
   with check (owner_id = auth.uid());
+
+create policy "Anonymous visitors can insert pixels"
+  on public.reserved_pixels for insert
+  to anon
+  with check (owner_id is null);
 
 create policy "Everyone can view the pixel wall"
   on public.reserved_pixels for select

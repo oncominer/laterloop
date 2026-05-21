@@ -125,7 +125,6 @@ main {
 
 .hero h1,
 .section-heading h2,
-.auth-panel h2,
 .side-panel h2 {
   margin: 0;
   font-family: "Press Start 2P", monospace;
@@ -232,7 +231,6 @@ main {
   font-size: 10px;
 }
 
-.auth-panel,
 .workspace,
 .wall-section,
 .unlock-section {
@@ -240,7 +238,6 @@ main {
   margin: 0 auto 52px;
 }
 
-.auth-panel,
 .side-panel,
 .composer,
 .unlock-section {
@@ -248,12 +245,6 @@ main {
   background: var(--panel);
   border: 2px solid var(--line);
   box-shadow: 8px 8px 0 #05020d;
-}
-
-.auth-panel {
-  display: grid;
-  grid-template-columns: 0.8fr 1.2fr;
-  gap: 22px;
 }
 
 .workspace {
@@ -284,7 +275,6 @@ main {
 }
 
 .section-heading h2,
-.auth-panel h2,
 .side-panel h2 {
   font-size: clamp(20px, 3vw, 32px);
 }
@@ -295,7 +285,6 @@ form {
 }
 
 .field-grid,
-.auth-form,
 .unlock-form {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -484,8 +473,7 @@ input[type="color"] {
 
 @media (max-width: 900px) {
   .hero,
-  .workspace,
-  .auth-panel {
+  .workspace {
     grid-template-columns: 1fr;
   }
 
@@ -504,7 +492,6 @@ input[type="color"] {
 
 @media (max-width: 620px) {
   .field-grid,
-  .auth-form,
   .unlock-form {
     grid-template-columns: 1fr;
   }
