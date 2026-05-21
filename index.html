@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="Create sealed retro time capsule letters for your future people."
+    />
+    <title>Future XYZ Time Capsules</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Space+Grotesk:wght@400;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/src/styles.css" />
+    <script src="/src/config.js"></script>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <script type="module" src="/src/app.js"></script>
+  </head>
+  <body>
+    <div class="stars" aria-hidden="true"></div>
+    <header class="topbar">
+      <a class="brand" href="#home" aria-label="Future XYZ Time Capsules home">
+        <span class="brand-mark">FX</span>
+        <span>Future XYZ</span>
+      </a>
+      <nav class="nav-links" aria-label="Primary navigation">
+        <a href="#capsules">Capsules</a>
+        <a href="#wall">Pixel Wall</a>
+        <a href="#unlock">Unlock</a>
+      </nav>
+      <button class="pixel-button small" id="authAction" type="button">Login</button>
+    </header>
+
+    <main>
+      <section class="hero" id="home">
+        <div class="hero-copy">
+          <p class="eyebrow">1988 signal found</p>
+          <h1>Seal one letter for your future xyzs.</h1>
+          <p>
+            Write a message, choose the exact unlock date, reserve a glowing pixel,
+            and let a secret password arrive only when the capsule is ready.
+          </p>
+          <div class="hero-actions">
+            <a class="pixel-button" href="#compose">Create Capsule</a>
+            <a class="ghost-button" href="#wall">Visit Pixel Wall</a>
+          </div>
+        </div>
+        <div class="arcade-screen" aria-label="Pixel time capsule preview">
+          <div class="screen-grid" id="heroGrid"></div>
+          <div class="scanline"></div>
+          <div class="screen-label">CAPSULE LINK: STABLE</div>
+        </div>
+      </section>
+
+      <section class="auth-panel" id="loginPanel" hidden>
+        <div>
+          <p class="eyebrow">Access terminal</p>
+          <h2>Login with Supabase</h2>
+        </div>
+        <form id="loginForm" class="auth-form">
+          <label>
+            Email
+            <input id="loginEmail" type="email" placeholder="you@example.com" autocomplete="email" />
+          </label>
+          <label>
+            Phone
+            <input id="loginPhone" type="tel" placeholder="+15555550123" autocomplete="tel" />
+          </label>
+          <div class="form-actions">
+            <button class="pixel-button" type="submit">Send Magic Link</button>
+            <button class="ghost-button" id="phoneLogin" type="button">Send Phone OTP</button>
+          </div>
+        </form>
+      </section>
+
+      <section class="workspace" id="capsules">
+        <aside class="side-panel">
+          <p class="eyebrow">Vault status</p>
+          <h2>Your capsule console</h2>
+          <div class="stat-row">
+            <span>Locked capsules</span>
+            <strong id="lockedCount">0</strong>
+          </div>
+          <div class="stat-row">
+            <span>Reserved pixels</span>
+            <strong id="pixelCount">0</strong>
+          </div>
+          <div class="stat-row">
+            <span>Session</span>
+            <strong id="sessionState">Guest</strong>
+          </div>
+          <p class="hint">
+            Demo mode saves locally until Supabase keys are added. Production mode
+            writes to Supabase with row-level security.
+          </p>
+        </aside>
+
+        <section class="composer" id="compose">
+          <div class="section-heading">
+            <p class="eyebrow">One capsule letter</p>
+            <h2>Write it, date it, lock it.</h2>
+          </div>
+          <form id="capsuleForm">
+            <div class="field-grid">
+              <label>
+                Your display name
+                <input id="displayName" required maxlength="32" placeholder="Ash" />
+              </label>
+              <label>
+                Future xyz
+                <input id="recipientName" required maxlength="48" placeholder="Future me, my kid, my team..." />
+              </label>
+              <label>
+                Open on
+                <input id="unlockAt" required type="datetime-local" />
+              </label>
+              <label>
+                Secret delivery
+                <select id="deliveryMethod">
+                  <option value="email">Email</option>
+                  <option value="sms">Phone SMS</option>
+                </select>
+              </label>
+              <label class="wide">
+                Email or phone for the future password
+                <input id="deliveryTarget" required placeholder="you@example.com or +15555550123" />
+              </label>
+              <label class="wide">
+                Capsule title
+                <input id="capsuleTitle" required maxlength="72" placeholder="Open when the next chapter starts" />
+              </label>
+            </div>
+            <label>
+              Letter
+              <textarea
+                id="capsuleBody"
+                required
+                maxlength="5000"
+                placeholder="Dear future xyz..."
+              ></textarea>
+            </label>
+            <div class="lock-strip">
+              <label>
+                Pixel color
+                <input id="pixelColor" type="color" value="#00f5ff" />
+              </label>
+              <button class="pixel-button" type="submit">Lock Capsule</button>
+            </div>
+          </form>
+        </section>
+      </section>
+
+      <section class="wall-section" id="wall">
+        <div class="section-heading">
+          <p class="eyebrow">Infinite-ish arcade canvas</p>
+          <h2>Reserved pixel wall</h2>
+        </div>
+        <div class="wall-toolbar">
+          <button class="ghost-button" id="randomPixel" type="button">Jump Random</button>
+          <button class="ghost-button" id="centerWall" type="button">Center</button>
+          <span id="wallPosition">Sector 0, 0</span>
+        </div>
+        <div class="pixel-wall" id="pixelWall" tabindex="0" aria-label="Reserved pixel wall"></div>
+      </section>
+
+      <section class="unlock-section" id="unlock">
+        <div class="section-heading">
+          <p class="eyebrow">Future gate</p>
+          <h2>Request your secret password</h2>
+        </div>
+        <form id="unlockForm" class="unlock-form">
+          <label>
+            Capsule ID
+            <input id="unlockCapsuleId" placeholder="Shown after locking a capsule" />
+          </label>
+          <label>
+            Email or phone
+            <input id="unlockTarget" placeholder="Where the password should be sent" />
+          </label>
+          <button class="pixel-button" type="submit">Send Unlock Password</button>
+        </form>
+        <form id="revealForm" class="unlock-form">
+          <label>
+            Capsule ID
+            <input id="revealCapsuleId" placeholder="Capsule ID" />
+          </label>
+          <label>
+            Secret password
+            <input id="secretPassword" placeholder="NEON-VAULT-..." />
+          </label>
+          <button class="pixel-button" type="submit">Open Capsule</button>
+        </form>
+        <article class="reveal-box" id="revealBox" hidden></article>
+        <div class="capsule-list" id="capsuleList" aria-live="polite"></div>
+      </section>
+    </main>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  </body>
+</html>

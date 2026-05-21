@@ -1,0 +1,14 @@
+{
+  "name": "future-xyz-time-capsules",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "netlify dev",
+    "serve": "python -m http.server 4173 --bind 127.0.0.1",
+    "build": "node scripts/build-check.mjs"
+  },
+  "devDependencies": {
+    "netlify-cli": "^17.38.1"
+  }
+}
